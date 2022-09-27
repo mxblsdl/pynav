@@ -15,15 +15,22 @@ def go(path: str):
     try:
         f = open(".nav", "r")
     except FileNotFoundError as err:
-        print(str(err) + ": Populate with `nav add`")
+        console.print(str(err) + ": Populate with `nav add`")
         exit(1)
 
     lines = f.readlines()
 
-    search = filter(lambda l: path.lower() in l.lower(), lines)
+    search = list(filter(lambda l: path.lower() in l.lower(), lines))
+
+    if len(search) > 1:
+        [console.print(i, l) for i, l in enumerate(search)]
+        selection = typer.prompt(
+            f"More than one matching path found\n Select desired path"
+        )
+        out_path[selection]
 
     # Flatten and clean path string for new lines
-    out_path = list(search)[0]
+    out_path = search[0]
     out_path = out_path.replace("\n", "")
 
     # TODO handle cases where more than one path are returned
