@@ -1,4 +1,4 @@
-#!/home/max/Documents/github/pynav/venv/bin/python3
+#! c:/Users/L170489/AppData/Local/Programs/Python/Python37/python
 import typer
 from sys import exit
 import os
@@ -13,13 +13,12 @@ app = typer.Typer()
 def go(path: str):
 
     try:
-        f = open(".nav", "r")
+        f = open("nav.conf", "r")
     except FileNotFoundError as err:
         console.print(str(err) + ": Populate with `nav add`")
         exit(1)
 
     lines = f.readlines()
-
     search = list(filter(lambda l: path.lower() in l.lower(), lines))
 
     if len(search) > 1:
@@ -27,20 +26,20 @@ def go(path: str):
         selection = typer.prompt(
             f"More than one matching path found\n Select desired path"
         )
-        out_path[selection]
+        out_path = search[int(selection)]
+    else:
+        out_path = search[0]
 
     # Flatten and clean path string for new lines
-    out_path = search[0]
     out_path = out_path.replace("\n", "")
 
-    # TODO handle cases where more than one path are returned
-    if "ix" in os.name:
-        # Replace home shortcut with home
-        out_path = out_path.replace("~", os.getenv("HOME"))
-        subprocess.run(["xdg-open", out_path])  # replace with path var
-    # TODO refine else process with windows
-    else:
-        subprocess.run(["explorer", "Documents"])  # replace with path var
+    typer.launch(out_path)
+    # if "ix" in os.name:
+    #     # Replace home shortcut with home
+    #     out_path = out_path.replace("~", os.getenv("HOME"))
+    #     subprocess.run(["xdg-open", out_path])  # replace with path var
+    # else:
+    #     typer.launch(out_path)  # I think I can replace above with this command
 
 
 @app.command()
@@ -52,12 +51,20 @@ def add():  # add global flag here?
 
     # Get path of file being run
     filepath = pathlib.Path(__file__).parent.resolve()
-    if not os.path.exists(os.path.join(filepath, ".nav")):
-        pathlib.Path(os.path.join(filepath, ".nav")).touch()
+    if not os.path.exists(os.path.join(filepath, "nav.conf")):
+        pathlib.Path(os.path.join(filepath, "nav.conf")).touch()
 
-    filepath = pathlib.Path(str(filepath) + "/.nav")
-    subprocess.run(["xdg-open", filepath])
+    filepath = pathlib.Path(str(filepath) + "/nav.conf")
+    print(os.name)
+    print(filepath)
+    if "ix" in os.name:
+        subprocess.run(["xdg-open", filepath])
+    else:
+        # typer.launch(filepath, )
+        os.system(f"Code {filepath}")
+        # os.startfile(filepath)
 
 
 if __name__ == "__main__":
     app()
+    # go(path="af") # for debugging
