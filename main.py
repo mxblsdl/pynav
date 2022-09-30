@@ -8,6 +8,8 @@ import pathlib
 
 app = typer.Typer()
 
+# TODO create package
+
 
 @app.command()
 def go(path: str):
