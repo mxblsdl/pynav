@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "pynav"
+version = "0.1.1"
+description = "A simple CLI for navigating to predefined directories"
+authors = ["mxblsdl <maxblasdel@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+typer = {extras = ["all"], version = "^0.6.1"}
+
+[tool.poetry.scripts]
+nav = 'pynav.main:app'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
