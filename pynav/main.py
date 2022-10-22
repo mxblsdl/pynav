@@ -4,6 +4,7 @@ import os
 import subprocess
 from pathlib import Path
 from rich import print
+import re
 
 app = typer.Typer()
 
@@ -59,9 +60,10 @@ def add():  # add global flag here?
 
 
 @app.command("r")
+# TODO add code option flag
 def open_r_proj(
     proj: str = typer.Argument(""),
-    # list: Optional[str] = typer.Option(
+    code: Optional[bool] = typer.Option(default=None, flag_value="c")
     #     None, help="Show R Project Files", rich_help_panel="Features"
 ):
 
@@ -74,29 +76,40 @@ def open_r_proj(
     parent_dir = lines[idx + 1 : idx + 2][0]
 
     # Find all projects
-    home = Path(parent_dir).expanduser()
-    rprojs = Path(home).rglob("*.Rproj")
+    rprojs = Path(parent_dir).expanduser().rglob("*.Rproj")
 
-    # Show user projects
+    # Build file path lists
+
     r_full = [r for r in rprojs]
-    r_full.sort()
     r_name = [r.name for r in r_full]
 
+    r_dict = dict(zip(r_name, r_full))
+
     if not proj == "":
-        r_tmp = list(filter(lambda r: proj.lower() in r.lower(), r_name))
-        # TODO add multi return logic
-        r_path = [r for r in r_full if str(r).endswith(r_tmp[0])]
+        # Match argument to list of projects
+        r_tmp_dict = {k: v for (k, v) in r_dict.items() if proj in k}
+
+        # Create selection if more than one
+        if len(r_tmp_dict.values()) > 1:
+            selection = select_prompt(
+                r_tmp_dict.values(),
+                "More than one matching path found\n Select desired path",
+            )
+            r_paths = list(r_tmp_dict.values())
+            r_path = r_paths[int(selection)]
 
     else:
         selection = select_prompt(r_name, "All R Projects")
         # make selection
-        r_path = r_full[int(selection)]
+        r_paths = list(r_tmp_dict.values())
+        r_path = r_paths[int(selection)]
 
     # Launch project
-    print(r_path)
-    # subprocess.run(["xdg-open", r_path])
+    if code:
+        os.system(f"code {r_path.parent}")
+        # subprocess.run(["code", r_path])
+    else:
+        subprocess.run(["xdg-open", r_path])
 
 
-# add()
-# open_r_proj("box")
-app()
+# open_r_proj("shi", True)
