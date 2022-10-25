@@ -4,7 +4,6 @@ import os
 import subprocess
 from pathlib import Path
 from rich import print
-import re
 
 app = typer.Typer()
 
@@ -60,10 +59,9 @@ def add():  # add global flag here?
 
 
 @app.command("r")
-# TODO add code option flag
 def open_r_proj(
     proj: str = typer.Argument(""),
-    code: Optional[bool] = typer.Option(default=None, flag_value="c")
+    code: Optional[bool] = typer.Option(default=False, flag_value="c")
     #     None, help="Show R Project Files", rich_help_panel="Features"
 ):
 
@@ -79,37 +77,27 @@ def open_r_proj(
     rprojs = Path(parent_dir).expanduser().rglob("*.Rproj")
 
     # Build file path lists
-
-    r_full = [r for r in rprojs]
-    r_name = [r.name for r in r_full]
-
-    r_dict = dict(zip(r_name, r_full))
+    r_paths = [[r, r.name] for r in rprojs]
 
     if not proj == "":
         # Match argument to list of projects
-        r_tmp_dict = {k: v for (k, v) in r_dict.items() if proj in k}
+        r_tmp_paths = [r for r in r_paths if proj in r[1]]
 
         # Create selection if more than one
-        if len(r_tmp_dict.values()) > 1:
+        if len(r_tmp_paths) > 1:
             selection = select_prompt(
-                r_tmp_dict.values(),
+                [r[1] for r in r_tmp_paths],
                 "More than one matching path found\n Select desired path",
             )
-            r_paths = list(r_tmp_dict.values())
-            r_path = r_paths[int(selection)]
+            r_path = r_tmp_paths[int(selection)]
 
     else:
-        selection = select_prompt(r_name, "All R Projects")
+        selection = select_prompt([r[1] for r in r_paths], "All R Projects")
         # make selection
-        r_paths = list(r_tmp_dict.values())
         r_path = r_paths[int(selection)]
 
     # Launch project
     if code:
-        os.system(f"code {r_path.parent}")
-        # subprocess.run(["code", r_path])
+        os.system(f"code {r_path[0].parent}")
     else:
-        subprocess.run(["xdg-open", r_path])
-
-
-# open_r_proj("shi", True)
+        subprocess.run(["xdg-open", r_path[0]])
