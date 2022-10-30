@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from rich import print
 
-app = typer.Typer()
+app = typer.Typer(help="Navigate your R Projects and Folders")
 
 # TODO move to other script
 def select_prompt(r, text):
@@ -14,9 +14,27 @@ def select_prompt(r, text):
     return selection
 
 
-@app.command()
-def go(path: str):
+# Set a default behavior if called without arguments
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """Default Behaviour
 
+    Args:
+        ctx (typer.Context): These are other commands that can be passed to the tool
+    """
+    if ctx.invoked_subcommand is None:
+        print(
+            "Usage: Navigate to a set of predetermined folders or projects from the command line"
+        )
+
+
+@app.command()
+def go(path: str = typer.Argument(default="")):
+    """Open a folder, accepts partial matching
+
+    Args:
+        path (str, optional): Folder path to open. Searches from prepopulated list of destinations
+    """
     try:
         lines = (Path.home() / ".nav.conf").read_text().splitlines()
     except FileNotFoundError as err:
@@ -41,15 +59,22 @@ def go(path: str):
 
 @app.command()
 def add():  # add global flag here?
-    print("[bold red]Add paths to nav file [/bold red] :emo:")
-    print("[red]These paths can be accessed with `nav go -path`[/red]")
+    """Opens a .nav.conf file to populate with folder paths"""
+    print("[bold]Add paths to .nav.conf file [/bold] :white_check_mark:")
+    print("[bold]Paths can be accessed with `nav go <path>`[/bold]")
 
     # Get path of file being run
     config_file = Path.home() / ".nav.conf"
 
-    if not Path.exists(config_file):
-        Path(config_file).touch()
-        # TODO populate with template
+    if not config_file.exists():
+        config_file.touch()
+        config_file.write_text(
+            """[paths]
+# add each navigable path on a new line\n
+[R Projects Folder]
+# Should only contain one value
+# Folder will be searched recursively"""
+        )
 
     if "ix" in os.name:
         subprocess.run(["xdg-open", config_file])
@@ -59,12 +84,16 @@ def add():  # add global flag here?
 
 
 @app.command("r")
-def open_r_proj(
+def define_r_proj(
     proj: str = typer.Argument(""),
-    code: Optional[bool] = typer.Option(default=False, flag_value="c")
-    #     None, help="Show R Project Files", rich_help_panel="Features"
+    code: Optional[bool] = typer.Option(False, "--code", "-c"),
 ):
+    """Open an R Project
 
+    Args:
+        proj (str, optional): Name of R Project. Supports partial matching.
+        code (Optional[bool], optional): Should the folder be opened with VS Code
+    """
     # Find projects
     lines = (Path.home() / ".nav.conf").read_text().splitlines()
     # Filter out comments
