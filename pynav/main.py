@@ -5,7 +5,11 @@ import subprocess
 from pathlib import Path
 from rich import print
 
-app = typer.Typer(help="Navigate your R Projects and Folders")
+app = typer.Typer(
+    help="Navigate your R Projects and Folders",
+    epilog="Made for run with :snake:",
+    rich_markup_mode="markdown",
+)
 
 # TODO move to other script
 def select_prompt(r, text):
@@ -59,7 +63,7 @@ def go(path: str = typer.Argument(default="")):
 
 @app.command()
 def add():  # add global flag here?
-    """Opens a .nav.conf file to populate with folder paths"""
+    """Opens a `.nav.conf` file to populate with folder paths"""
     print("[bold]Add paths to .nav.conf file [/bold] :white_check_mark:")
     print("[bold]Paths can be accessed with `nav go <path>`[/bold]")
 
