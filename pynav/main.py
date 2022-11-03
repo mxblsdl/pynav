@@ -90,7 +90,7 @@ def add():  # add global flag here?
 @app.command("r")
 def define_r_proj(
     proj: str = typer.Argument(""),
-    code: Optional[bool] = typer.Option(False, "--code", "-c"),
+    code: bool = typer.Option(False, "--code", "-c", is_flag=True),
 ):
     """Open an R Project
 
@@ -123,6 +123,8 @@ def define_r_proj(
                 "More than one matching path found\n Select desired path",
             )
             r_path = r_tmp_paths[int(selection)]
+        else:
+            r_path = r_tmp_paths[0]
 
     else:
         selection = select_prompt([r[1] for r in r_paths], "All R Projects")
@@ -133,4 +135,7 @@ def define_r_proj(
     if code:
         os.system(f"code {r_path[0].parent}")
     else:
-        subprocess.run(["xdg-open", r_path[0]])
+        if "ix" in os.name:
+            subprocess.run(["xdg-open", r_path[0]])
+        else:
+            os.startfile(r_path[0])
