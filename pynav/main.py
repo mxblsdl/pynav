@@ -1,7 +1,5 @@
-from typing import Optional
 import typer
 import os
-import subprocess
 from pathlib import Path
 from rich import print
 
@@ -19,17 +17,17 @@ def select_prompt(r, text):
 
 
 # Set a default behavior if called without arguments
-@app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """Default Behaviour
+# @app.callback(invoke_without_command=True)
+# def main(ctx: typer.Context):
+#     """Default Behaviour
 
-    Args:
-        ctx (typer.Context): These are other commands that can be passed to the tool
-    """
-    if ctx.invoked_subcommand is None:
-        print(
-            "Usage: Navigate to a set of predetermined folders or projects from the command line"
-        )
+#     Args:
+#         ctx (typer.Context): These are other commands that can be passed to the tool
+#     """
+#     if ctx.invoked_subcommand is None:
+#         print(
+#             "Usage: Navigate to a set of predetermined folders or projects from the command line"
+#         )
 
 
 @app.command()
@@ -52,6 +50,9 @@ def go(path: str = typer.Argument(default="")):
             search, "More than one matching path found\n Select desired path"
         )
         out_path = search[int(selection)]
+    elif len(search) == 0:
+        print("Search does not match any paths\nCheck paths with `nav add()`")
+        return
     else:
         out_path = search[0]
 
@@ -79,12 +80,7 @@ def add():  # add global flag here?
 # Should only contain one value
 # Folder will be searched recursively"""
         )
-
-    if "ix" in os.name:
-        subprocess.run(["xdg-open", config_file])
-    else:
-        # os.system(f"Code {config_file}")
-        os.startfile(config_file)
+    typer.launch(str(config_file))
 
 
 @app.command("r")
@@ -99,7 +95,12 @@ def define_r_proj(
         code (Optional[bool], optional): Should the folder be opened with VS Code
     """
     # Find projects
-    lines = (Path.home() / ".nav.conf").read_text().splitlines()
+    try:
+        lines = (Path.home() / ".nav.conf").read_text().splitlines()
+    except FileNotFoundError as err:
+        print(str(err) + ": Populate with `nav add`")
+        raise typer.Exit(1)
+
     # Filter out comments
     lines = [l for l in lines if not l.startswith("#")]
     # Find appropraite index
@@ -123,6 +124,11 @@ def define_r_proj(
                 "More than one matching path found\n Select desired path",
             )
             r_path = r_tmp_paths[int(selection)]
+        elif len(r_tmp_paths) == 0:
+            print(
+                "No R projects match search :crying_face:\nCheck R folder with `nav add()`"
+            )
+            return
         else:
             r_path = r_tmp_paths[0]
 
@@ -135,7 +141,4 @@ def define_r_proj(
     if code:
         os.system(f"code {r_path[0].parent}")
     else:
-        if "ix" in os.name:
-            subprocess.run(["xdg-open", r_path[0]])
-        else:
-            os.startfile(r_path[0])
+        typer.launch(str(r_path[0]), locate=True)
