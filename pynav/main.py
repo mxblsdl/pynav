@@ -2,6 +2,7 @@ import typer
 import os
 from pathlib import Path
 from rich import print
+from rich.progress import Progress, SpinnerColumn
 
 app = typer.Typer(
     help="Navigate your R Projects and Folders",
@@ -14,20 +15,6 @@ def select_prompt(r, text):
     [print(i, l) for i, l in enumerate(r)]
     selection = typer.prompt(text)
     return selection
-
-
-# Set a default behavior if called without arguments
-# @app.callback(invoke_without_command=True)
-# def main(ctx: typer.Context):
-#     """Default Behaviour
-
-#     Args:
-#         ctx (typer.Context): These are other commands that can be passed to the tool
-#     """
-#     if ctx.invoked_subcommand is None:
-#         print(
-#             "Usage: Navigate to a set of predetermined folders or projects from the command line"
-#         )
 
 
 @app.command()
@@ -95,23 +82,26 @@ def define_r_proj(
         code (Optional[bool], optional): Should the folder be opened with VS Code
     """
     # Find projects
-    try:
-        lines = (Path.home() / ".nav.conf").read_text().splitlines()
-    except FileNotFoundError as err:
-        print(str(err) + ": Populate with `nav add`")
-        raise typer.Exit(1)
+    with Progress(SpinnerColumn(), transient=True) as progress:
+        progress.add_task(description="Finding Files...")
 
-    # Filter out comments
-    lines = [l for l in lines if not l.startswith("#")]
-    # Find appropraite index
-    idx = lines.index("[R Projects Folder]")
-    parent_dir = lines[idx + 1 : idx + 2][0]
+        try:
+            lines = (Path.home() / ".nav.conf").read_text().splitlines()
+        except FileNotFoundError as err:
+            print(str(err) + ": Populate with `nav add`")
+            raise typer.Exit(1)
 
-    # Find all projects
-    rprojs = Path(parent_dir).expanduser().rglob("*.Rproj")
+        # Filter out comments
+        lines = [l for l in lines if not l.startswith("#")]
+        # Find appropraite index
+        idx = lines.index("[R Projects Folder]")
+        parent_dir = lines[idx + 1 : idx + 2][0]
 
-    # Build file path lists
-    r_paths = [[r, r.name] for r in rprojs]
+        # Find all projects
+        rprojs = Path(parent_dir).expanduser().rglob("*.Rproj")
+
+        # Build file path lists
+        r_paths = [[r, r.name] for r in rprojs]
 
     if not proj == "":
         # Match argument to list of projects
@@ -133,7 +123,7 @@ def define_r_proj(
             r_path = r_tmp_paths[0]
 
     else:
-        selection = select_prompt([r[1] for r in r_paths], "All R Projects")
+        selection = select_prompt([r[1] for r in r_paths], "Choose from all R Projects")
         # make selection
         r_path = r_paths[int(selection)]
 
