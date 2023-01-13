@@ -66,7 +66,7 @@ def go(
     # search = list(filter(lambda l: path.lower() in l.lower(), lines))
     if not proj == "":
         # Match argument to list of projects
-        tmp_paths = [p for p in paths if proj in p[1]]
+        tmp_paths = [p for p in paths if proj.lower() in p[1].lower()]
 
         # Create selection if more than one
         if len(tmp_paths) > 1:
