@@ -10,7 +10,7 @@ app = typer.Typer(
     rich_markup_mode="markdown",
 )
 
-# TODO move to other script
+
 def select_prompt(r, text):
     [print(i, l) for i, l in enumerate(r)]
     selection = typer.prompt(text)
@@ -18,7 +18,10 @@ def select_prompt(r, text):
 
 
 @app.command()
-def go(path: str = typer.Argument(default="")):
+def go(
+    proj: str = typer.Argument(default=""),
+    code: bool = typer.Option(False, "--code", "-c", is_flag=True),
+):
     """Open a folder, accepts partial matching
 
     Args:
@@ -30,23 +33,66 @@ def go(path: str = typer.Argument(default="")):
         print(str(err) + ": Populate with `nav add`")
         raise typer.Exit(1)
 
-    search = list(filter(lambda l: path.lower() in l.lower(), lines))
+    # Filter out comments
+    lines = [l for l in lines if not l.startswith("#") or l == ""]
 
-    if len(search) > 1:
-        selection = select_prompt(
-            search, "More than one matching path found\n Select desired path"
-        )
-        out_path = search[int(selection)]
-    elif len(search) == 0:
-        print("Search does not match any paths\nCheck paths with `nav add()`")
-        return
+    # Find appropriate index
+    idx = lines.index("[recursive]")
+    # Create a list of the single paths
+    single_paths = lines[:idx]
+    single_paths = [Path(l) for l in single_paths if not l.startswith("[")]
+
+    # Create a
+    single_paths = [[str(p.expanduser()), p.name] for p in single_paths]
+    """I want to combine the recursive lines and the non recursive lines
+    Need to separate out the recursive"""
+
+    # Add recursive items to lines
+    try:
+        # ? This only allows for one value in the recursive section, should expand?? to more values??
+        # parent_dir = lines[idx:][0]
+        parent_dir = [l for l in lines[idx:] if not l.startswith("[")]
+        parent_dir = Path(parent_dir[0]).expanduser()
+        # Find all projects
+        projects = [f.path for f in os.scandir(parent_dir) if f.is_dir()]
+
+        # Build file path lists
+        paths = [[p, Path(p).name] for p in projects]
+        paths.extend(single_paths)
+    except:
+        print("No recursive paths specified")
+        paths = single_paths
+
+    # search = list(filter(lambda l: path.lower() in l.lower(), lines))
+    if not proj == "":
+        # Match argument to list of projects
+        tmp_paths = [p for p in paths if proj in p[1]]
+
+        # Create selection if more than one
+        if len(tmp_paths) > 1:
+            selection = select_prompt(
+                [p[1] for p in tmp_paths],
+                "More than one matching path found\n Select desired path",
+            )
+            path = tmp_paths[int(selection)]
+        elif len(tmp_paths) == 0:
+            print(
+                "No projects match search :crying_face:\nCheck folders with `nav add()`"
+            )
+            return
+        else:
+            path = tmp_paths[0]
+
     else:
-        out_path = search[0]
+        selection = select_prompt([p[1] for p in paths], "Choose from all Projects")
+        # make selection
+        path = paths[int(selection)]
 
-    # Flatten and clean path string for new lines
-    out_path = Path(out_path).expanduser()
-
-    typer.launch(str(out_path))
+    # Launch project
+    if code:
+        os.system(f"code {path[0]}")
+    else:
+        typer.launch(str(path[0]), locate=True)
 
 
 @app.command()
@@ -61,11 +107,10 @@ def add():  # add global flag here?
     if not config_file.exists():
         config_file.touch()
         config_file.write_text(
-            """[paths]
+            """[single paths]
 # add each navigable path on a new line\n
-[R Projects Folder]
-# Should only contain one value
-# Folder will be searched recursively"""
+[recursive]
+# These folders will be searched recursively"""
         )
     typer.launch(str(config_file))
 
@@ -93,42 +138,43 @@ def define_r_proj(
 
         # Filter out comments
         lines = [l for l in lines if not l.startswith("#")]
-        # Find appropraite index
-        idx = lines.index("[R Projects Folder]")
+        # Find appropriate index
+        idx = lines.index("[recursive]")
+        # ? This only allows for one value in the recursive section, should expand?? to more values??
         parent_dir = lines[idx + 1 : idx + 2][0]
 
         # Find all projects
-        rprojs = Path(parent_dir).expanduser().rglob("*.Rproj")
+        projects = [f.path for f in os.scandir(parent_dir) if f.is_dir()]
 
         # Build file path lists
-        r_paths = [[r, r.name] for r in rprojs]
+        paths = [[p, Path(p).name] for p in projects]
 
     if not proj == "":
         # Match argument to list of projects
-        r_tmp_paths = [r for r in r_paths if proj in r[1]]
+        tmp_paths = [p for p in paths if proj in p[1]]
 
         # Create selection if more than one
-        if len(r_tmp_paths) > 1:
+        if len(tmp_paths) > 1:
             selection = select_prompt(
-                [r[1] for r in r_tmp_paths],
+                [p[1] for p in tmp_paths],
                 "More than one matching path found\n Select desired path",
             )
-            r_path = r_tmp_paths[int(selection)]
-        elif len(r_tmp_paths) == 0:
+            path = tmp_paths[int(selection)]
+        elif len(tmp_paths) == 0:
             print(
-                "No R projects match search :crying_face:\nCheck R folder with `nav add()`"
+                "No projects match search :crying_face:\nCheck folders with `nav add()`"
             )
             return
         else:
-            r_path = r_tmp_paths[0]
+            path = tmp_paths[0]
 
     else:
-        selection = select_prompt([r[1] for r in r_paths], "Choose from all R Projects")
+        selection = select_prompt([p[1] for p in paths], "Choose from all Projects")
         # make selection
-        r_path = r_paths[int(selection)]
+        path = paths[int(selection)]
 
     # Launch project
     if code:
-        os.system(f"code {r_path[0].parent}")
+        os.system(f"code {path[0]}")
     else:
-        typer.launch(str(r_path[0]), locate=True)
+        typer.launch(str(path[0]), locate=True)
