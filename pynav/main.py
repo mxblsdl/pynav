@@ -9,6 +9,7 @@ app = typer.Typer(
     help="Navigate your R Projects and Folders",
     epilog="Made for run with :snake:",
     rich_markup_mode="markdown",
+    no_args_is_help=True,
 )
 
 
