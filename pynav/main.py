@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from rich import print
 from rich.progress import Progress, SpinnerColumn
+from itertools import chain
 
 app = typer.Typer(
     help="Navigate your R Projects and Folders",
@@ -17,11 +18,14 @@ def select_prompt(r, text):
     return selection
 
 
-@app.command()
-def go(
-    proj: str = typer.Argument(default=""),
-    code: bool = typer.Option(False, "--code", "-c", is_flag=True),
-):
+def scan_dir(dir: list[str]) -> list[str]:
+    projects = [[[p.path, p.name] for p in os.scandir(f)] for f in dir]
+    # Flatten
+    return list(chain.from_iterable(projects))
+
+
+# @app.command()
+def find_paths(proj: str):
     """Open a folder, accepts partial matching
 
     Args:
@@ -31,40 +35,34 @@ def go(
         lines = (Path.home() / ".nav.conf").read_text().splitlines()
     except FileNotFoundError as err:
         print(str(err) + ": Populate with `nav add`")
-        raise typer.Exit(1)
+        typer.Exit(1)
 
     # Filter out comments
     lines = [l for l in lines if not l.startswith("#") or l == ""]
 
-    # Find appropriate index
+    # Find line with recursive keyword and select all lines before
     idx = lines.index("[recursive]")
-    # Create a list of the single paths
-    single_paths = lines[:idx]
-    single_paths = [Path(l) for l in single_paths if not l.startswith("[")]
 
-    # Create a
-    single_paths = [[str(p.expanduser()), p.name] for p in single_paths]
-    """I want to combine the recursive lines and the non recursive lines
-    Need to separate out the recursive"""
+    # Create a list of the single paths
+    paths = lines[:idx]
+    paths = [
+        [str(Path(l).expanduser()), Path(l).name]
+        for l in paths
+        if not l.startswith("[")
+    ]
 
     # Add recursive items to lines
-    try:
-        # ? This only allows for one value in the recursive section, should expand?? to more values??
-        # parent_dir = lines[idx:][0]
-        parent_dir = [l for l in lines[idx:] if not l.startswith("[")]
-        parent_dir = Path(parent_dir[0]).expanduser()
-        # Find all projects
-        projects = [f.path for f in os.scandir(parent_dir) if f.is_dir()]
+    recursive_dirs = [
+        Path(l).expanduser() for l in lines[idx:] if not l.startswith("[")
+    ]
 
-        # Build file path lists
-        paths = [[p, Path(p).name] for p in projects]
-        paths.extend(single_paths)
-    except:
+    if len(recursive_dirs) == 0:
         print("No recursive paths specified")
-        paths = single_paths
 
-    # search = list(filter(lambda l: path.lower() in l.lower(), lines))
-    if not proj == "":
+    r_paths = scan_dir(recursive_dirs)
+    paths.extend(r_paths)
+
+    if proj != "":
         # Match argument to list of projects
         tmp_paths = [p for p in paths if proj.lower() in p[1].lower()]
 
@@ -74,25 +72,33 @@ def go(
                 [p[1] for p in tmp_paths],
                 "More than one matching path found\n Select desired path",
             )
-            path = tmp_paths[int(selection)]
-        elif len(tmp_paths) == 0:
+            return tmp_paths[int(selection)]
+
+        if len(tmp_paths) == 0:
             print(
                 "No projects match search :crying_face:\nCheck folders with `nav add()`"
             )
-            return
-        else:
-            path = tmp_paths[0]
+            typer.Exit(1)
 
-    else:
-        selection = select_prompt([p[1] for p in paths], "Choose from all Projects")
-        # make selection
-        path = paths[int(selection)]
+        return list(*tmp_paths)
 
-    # Launch project
+    # Select from all projects if nothing specified
+    selection = select_prompt([p[1] for p in paths], "Choose from all Projects")
+    return paths[int(selection)]
+
+
+@app.command("go")
+def go(
+    proj: str = typer.Argument(default=""),
+    code: bool = typer.Option(False, "--code", "-c", is_flag=True),
+):
+    path = find_paths(proj)
+
     if code:
         os.system(f"code {path[0]}")
-    else:
-        typer.launch(str(path[0]), locate=True)
+        return None
+    typer.launch(str(path[0]), locate=False)
+    typer.Exit()
 
 
 @app.command()
@@ -113,68 +119,3 @@ def add():  # add global flag here?
 # These folders will be searched recursively"""
         )
     typer.launch(str(config_file))
-
-
-@app.command("r")
-def define_r_proj(
-    proj: str = typer.Argument(""),
-    code: bool = typer.Option(False, "--code", "-c", is_flag=True),
-):
-    """Open an R Project
-
-    Args:
-        proj (str, optional): Name of R Project. Supports partial matching.
-        code (Optional[bool], optional): Should the folder be opened with VS Code
-    """
-    # Find projects
-    with Progress(SpinnerColumn(), transient=True) as progress:
-        progress.add_task(description="Finding Files...")
-
-        try:
-            lines = (Path.home() / ".nav.conf").read_text().splitlines()
-        except FileNotFoundError as err:
-            print(str(err) + ": Populate with `nav add`")
-            raise typer.Exit(1)
-
-        # Filter out comments
-        lines = [l for l in lines if not l.startswith("#")]
-        # Find appropriate index
-        idx = lines.index("[recursive]")
-        # ? This only allows for one value in the recursive section, should expand?? to more values??
-        parent_dir = lines[idx + 1 : idx + 2][0]
-
-        # Find all projects
-        projects = [f.path for f in os.scandir(parent_dir) if f.is_dir()]
-
-        # Build file path lists
-        paths = [[p, Path(p).name] for p in projects]
-
-    if not proj == "":
-        # Match argument to list of projects
-        tmp_paths = [p for p in paths if proj in p[1]]
-
-        # Create selection if more than one
-        if len(tmp_paths) > 1:
-            selection = select_prompt(
-                [p[1] for p in tmp_paths],
-                "More than one matching path found\n Select desired path",
-            )
-            path = tmp_paths[int(selection)]
-        elif len(tmp_paths) == 0:
-            print(
-                "No projects match search :crying_face:\nCheck folders with `nav add()`"
-            )
-            return
-        else:
-            path = tmp_paths[0]
-
-    else:
-        selection = select_prompt([p[1] for p in paths], "Choose from all Projects")
-        # make selection
-        path = paths[int(selection)]
-
-    # Launch project
-    if code:
-        os.system(f"code {path[0]}")
-    else:
-        typer.launch(str(path[0]), locate=True)
