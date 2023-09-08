@@ -9,7 +9,7 @@ app = typer.Typer(
     help="Navigate your R Projects and Folders",
     epilog="Made for run with :snake:",
     rich_markup_mode="markdown",
-    no_args_is_help=True,
+    add_completion=False,
 )
 
 
@@ -25,7 +25,6 @@ def scan_dir(dir: list[str]) -> list[str]:
     return list(chain.from_iterable(projects))
 
 
-# @app.command()
 def find_paths(proj: str):
     """Open a folder, accepts partial matching
 
@@ -88,8 +87,8 @@ def find_paths(proj: str):
     return paths[int(selection)]
 
 
-@app.command("go")
-def go(
+@app.callback(invoke_without_command=True)
+def main(
     proj: str = typer.Argument(default=""),
     code: bool = typer.Option(False, "--code", "-c", is_flag=True),
 ):
@@ -111,6 +110,7 @@ def add():  # add global flag here?
     # Get path of file being run
     config_file = Path.home() / ".nav.conf"
 
+    # I could replace this with a context manager for the file
     if not config_file.exists():
         config_file.touch()
         config_file.write_text(
