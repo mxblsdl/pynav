@@ -10,6 +10,7 @@ app = typer.Typer(
     epilog="Made for run with :snake:",
     rich_markup_mode="markdown",
     add_completion=False,
+    no_args_is_help=True,
 )
 
 
@@ -87,8 +88,8 @@ def find_paths(proj: str):
     return paths[int(selection)]
 
 
-@app.callback(invoke_without_command=True)
-def main(
+@app.command()
+def go(
     proj: str = typer.Argument(default=""),
     code: bool = typer.Option(False, "--code", "-c", is_flag=True),
 ):
