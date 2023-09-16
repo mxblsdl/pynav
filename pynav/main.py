@@ -21,7 +21,9 @@ def select_prompt(r, text):
 
 
 def scan_dir(dir: list[str]) -> list[str]:
-    projects = [[[p.path, p.name] for p in os.scandir(f)] for f in dir]
+    projects = [
+        [[p.path, p.name] for p in os.scandir(f) if os.path.isdir(p)] for f in dir
+    ]
     # Flatten
     return list(chain.from_iterable(projects))
 
