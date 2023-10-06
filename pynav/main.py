@@ -38,7 +38,7 @@ def find_paths(proj: str):
         lines = (Path.home() / ".nav.conf").read_text().splitlines()
     except FileNotFoundError as err:
         print(str(err) + ": Populate with `nav add`")
-        typer.Exit(1)
+        raise typer.Exit(1)
 
     # Filter out comments
     lines = [l for l in lines if not l.startswith("#") or l == ""]
@@ -81,7 +81,7 @@ def find_paths(proj: str):
             print(
                 "No projects match search :crying_face:\nCheck folders with `nav add()`"
             )
-            typer.Exit(1)
+            raise typer.Exit(code=1)
 
         return list(*tmp_paths)
 
