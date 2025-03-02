@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pynav"
-version = "0.1.5"
+version = "0.1.7"
 description = "A simple CLI for navigating to predefined directories"
 authors = ["mxblsdl <maxblasdel@gmail.com>"]
 readme = "README.md"
