@@ -2,7 +2,6 @@ import typer
 import os
 from pathlib import Path
 from rich import print
-from rich.progress import Progress, SpinnerColumn
 from itertools import chain
 
 app = typer.Typer(
